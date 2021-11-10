@@ -40,15 +40,80 @@
 
     minus {dst: register} => asm {
         ld {dst}, pc
-    } @ 0b111111111
+    } @ 0b111111111 ; -1 isn't a valid instruction and will be ignored
 
-    push {src: register} => asm {
-        str sp, {src}
-        add sp, spinc
+    if {cond: register} then {then: u9} else {else: u9}, clobber {scratch: register} => {
+        assert(scratch != cond)
+        asm {
+            ; scratch = 3
+            ; and r0, r0 is encoded as 3 and does nothing
+            ld {scratch}, pc
+            and r0, r0
+
+            ; pc is always the next instruction, so now scratch points to else and then
+            add {scratch}, pc
+
+            ; pc = the array [else, then] indexed by (cond != 0)
+            nz {cond}, {cond}
+            add {scratch}, {cond}
+            ld pc, {scratch}
+        } @ else @ then
     }
 
-    pop {dst: register} => asm {
-        add sp, spinc
-        ld {dst}, sp
+    neg {dst: register}, {src: register}, clobber {scratch: register} => {
+        assert(scratch != dst && scratch != src)
+        asm {
+            plus {scratch}
+            not {dst}, {src}
+            add {dst}, {scratch}
+        }
+    }
+
+    ; subtract and leave src negated
+    sub nosave {dst: register}, {src: register}, clobber {scratch: register} => {
+        assert(scratch != dst && scratch != src)
+        asm {
+            neg {src}, {src}, clobber {scratch}
+            add {dst}, {src}
+        }
+    }
+
+    sub {dst: register}, {a: register}, {b: register}, clobber {scratch: register} => {
+        assert(dst != a && dst != b && dst != scratch)
+        assert(a != b && a != scratch)
+        assert(b != scratch)
+        asm {
+            neg {scratch}, {b}, clobber {dst}
+            mov {dst}, {a}
+            add {dst}, {scratch}
+        }
+    }
+
+    inc {reg: register}, clobber {scratch: register} => {
+        assert(scratch != reg)
+        asm {
+            plus {scratch}
+            add {reg}, {scratch}
+        }
+    }
+
+    dec {reg: register}, clobber {scratch: register} => {
+        assert(scratch != reg)
+        asm {
+            minus {scratch}
+            add {reg}, {scratch}
+        }
+    }
+
+    ltz {reg: register}, clobber {scratch: register} => {
+        assert(scratch != reg)
+        ; check sign bit by ANDing reg with (1 << 9)
+        ; 0b011111111 is not a valid instruction and will be ignored
+        asm {
+            ld {scratch}, pc
+        } @ 0b011111111 @ asm {
+            not {scratch}, {scratch}
+            and {reg}, {scratch}
+        }
     }
 }
