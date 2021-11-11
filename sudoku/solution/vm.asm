@@ -34,11 +34,11 @@
         or {dst}, {src}
     }
 
-    plus {dst: register} => asm {
+    mov {dst: register}, 1 => asm {
         nz {dst}, pc
     }
 
-    minus {dst: register} => asm {
+    mov {dst: register}, -1 => asm {
         ld {dst}, pc
     } @ 0b111111111 ; -1 isn't a valid instruction and will be ignored
 
@@ -63,7 +63,7 @@
     neg {dst: register}, {src: register}, clobber {scratch: register} => {
         assert(scratch != dst && scratch != src)
         asm {
-            plus {scratch}
+            mov {scratch}, 1
             not {dst}, {src}
             add {dst}, {scratch}
         }
@@ -92,7 +92,7 @@
     inc {reg: register}, clobber {scratch: register} => {
         assert(scratch != reg)
         asm {
-            plus {scratch}
+            mov {scratch}, 1
             add {reg}, {scratch}
         }
     }
@@ -100,7 +100,7 @@
     dec {reg: register}, clobber {scratch: register} => {
         assert(scratch != reg)
         asm {
-            minus {scratch}
+            mov {scratch}, -1
             add {reg}, {scratch}
         }
     }
